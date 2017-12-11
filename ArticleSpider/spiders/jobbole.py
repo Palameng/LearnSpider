@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import scrapy
 import re
+import datetime
 
 from scrapy.http import Request
 from urllib import parse
@@ -68,13 +69,13 @@ class JobboleSpider(scrapy.Spider):
         entry_selector = response.xpath('//div[(@class="entry")]')  # 正文
 
         # 对选择器进行extract()得到相应的列表
-        title = title_selector.extract()[0]
+        title = title_selector.extract_first('')
         titlecss = title_css.extract_first('')    # 防止异常
         create_time = createtime_selector.extract()[0].strip().replace('·', '').strip()
         info = info_selector.extract()
         comment_num = comment_selector.extract()[0]
-        vote_num = vote_selector.extract()[0]
-        bookmark_num = bookmark_selector.extract()[0]
+        vote_num = vote_selector.extract_first('')
+        bookmark_num = bookmark_selector.extract_first('')
         entry = entry_selector.extract()[0]
 
         re_for_comment_num = re.match(r".*(\d+).*", comment_num)
@@ -85,7 +86,7 @@ class JobboleSpider(scrapy.Spider):
         else:
             comment_num = 0
 
-        if comment_num:
+        if re_for_bookmark_num:
             bookmark_num = int(re_for_bookmark_num.group(1))
         else:
             bookmark_num = 0
@@ -106,6 +107,12 @@ class JobboleSpider(scrapy.Spider):
         # entry = scrapy.Field()
 
         article_item["title"] = title
+
+        try:
+            create_time = datetime.datetime.strptime(create_time, "%Y/%m/%d").date()
+        except Exception as e:
+            create_time = datetime.datetime.now().date()
+
         article_item["create_date"] = create_time
         article_item["url"] = response.url
         article_item["url_object_id"] = get_md5(response.url)
