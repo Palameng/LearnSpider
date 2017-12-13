@@ -5,8 +5,9 @@ import datetime
 
 from scrapy.http import Request
 from urllib import parse
+from scrapy.loader import ItemLoader
 
-from ArticleSpider.items import JobBoleArticleItem
+from ArticleSpider.items import JobBoleArticleItem, ArticleItemLoader
 from ArticleSpider.utils.common import get_md5
 
 
@@ -53,76 +54,99 @@ class JobboleSpider(scrapy.Spider):
         # re2_selector = response.xpath('//*[@id="post-113119"]/div[1]/h1/text()')
         # re3_selector = response.xpath('//div[@class="entry-header"]/h1/text()')
 
-        article_item = JobBoleArticleItem()
+        # article_item = JobBoleArticleItem()
 
+        # front_image_url = response.meta.get("front_image_url", "")  # 文章封面图
+
+        # # 获取到页面各个信息的选择器
+        #
+        # title_selector = response.xpath('//div[@class="entry-header"]/h1/text()')    # 标题
+        # title_css = response.css(".entry-header h1::text")  # 增加::伪类选择器去掉<h1>
+        # createtime_selector = response.xpath('//p[@class="entry-meta-hide-on-mobile"]/text()')  # 时间
+        # info_selector = response.xpath('//p[@class="entry-meta-hide-on-mobile"]/a/text()')  # 标签
+        # comment_selector = response.xpath('//span[@class="btn-bluet-bigger href-style hide-on-480"]/text()')    # 评论数
+        # vote_selector = response.xpath('//span[contains(@class, "vote-post-up")]/h10/text()')   # 点赞数
+        # bookmark_selector = response.xpath('//span[contains(@class, "bookmark")]/text()')   # 收藏数
+        # entry_selector = response.xpath('//div[(@class="entry")]')  # 正文
+        #
+        # # 对选择器进行extract()得到相应的列表
+        # title = title_selector.extract_first('')
+        # titlecss = title_css.extract_first('')    # 防止异常
+        # create_time = createtime_selector.extract()[0].strip().replace('·', '').strip()
+        # info = info_selector.extract()
+        # comment_num = comment_selector.extract()[0]
+        # vote_num = vote_selector.extract_first('')
+        # bookmark_num = bookmark_selector.extract_first('')
+        # entry = entry_selector.extract()[0]
+        #
+        # re_for_comment_num = re.match(r".*(\d+).*", comment_num)
+        # re_for_bookmark_num = re.match(r".*(\d+).*", bookmark_num)
+        #
+        # if re_for_comment_num:
+        #     comment_num = int(re_for_comment_num.group(1))
+        # else:
+        #     comment_num = 0
+        #
+        # if re_for_bookmark_num:
+        #     bookmark_num = int(re_for_bookmark_num.group(1))
+        # else:
+        #     bookmark_num = 0
+        #
+        # info = [element for element in info if not element.strip().endswith('评论')]
+        # str_info = ",".join(info)
+        #
+        # # title = scrapy.Field()
+        # # create_date = scrapy.Field()
+        # # url = scrapy.Field()
+        # # url_object_id = scrapy.Field()
+        # # front_image_url = scrapy.Field()
+        # # front_image_path = scrapy.Field()
+        # # vote_num = scrapy.Field()
+        # # bookmark_num = scrapy.Field()
+        # # comment_num = scrapy.Field()
+        # # info = scrapy.Field()
+        # # entry = scrapy.Field()
+        #
+        # article_item["title"] = title
+        #
+        # try:
+        #     create_time = datetime.datetime.strptime(create_time, "%Y/%m/%d").date()
+        # except Exception as e:
+        #     create_time = datetime.datetime.now().date()
+        #
+        # article_item["create_date"] = create_time
+        # article_item["url"] = response.url
+        # article_item["url_object_id"] = get_md5(response.url)
+        # article_item["front_image_url"] = [front_image_url]
+        # # article_item[front_image_path] =
+        # article_item["vote_num"] = vote_num
+        # article_item["bookmark_num"] = bookmark_num
+        # article_item["comment_num"] = comment_num
+        # article_item["info"] = info
+        # article_item["entry"] = entry
+
+        # ---------------------------------通过item_loader加载item----------------------------------------
         front_image_url = response.meta.get("front_image_url", "")  # 文章封面图
+        # item_loader = ItemLoader(item=JobBoleArticleItem(), response=response)
+        item_loader = ArticleItemLoader(item=JobBoleArticleItem(), response=response)
 
-        # 获取到页面各个信息的选择器
+        # 通过add_css为item定义css选择规则
+        item_loader.add_css("title", ".entry-header h1::text")
 
-        title_selector = response.xpath('//div[@class="entry-header"]/h1/text()')    # 标题
-        title_css = response.css(".entry-header h1::text")  # 增加::伪类选择器去掉<h1>
-        createtime_selector = response.xpath('//p[@class="entry-meta-hide-on-mobile"]/text()')  # 时间
-        info_selector = response.xpath('//p[@class="entry-meta-hide-on-mobile"]/a/text()')  # 标签
-        comment_selector = response.xpath('//span[@class="btn-bluet-bigger href-style hide-on-480"]/text()')    # 评论数
-        vote_selector = response.xpath('//span[contains(@class, "vote-post-up")]/h10/text()')   # 点赞数
-        bookmark_selector = response.xpath('//span[contains(@class, "bookmark")]/text()')   # 收藏数
-        entry_selector = response.xpath('//div[(@class="entry")]')  # 正文
+        # 通过add_css为item定义xpath选择规则
+        item_loader.add_xpath("create_date", "//p[@class='entry-meta-hide-on-mobile']/text()")
+        item_loader.add_xpath("vote_num", "//span[contains(@class, 'vote-post-up')]/h10/text()")
+        item_loader.add_xpath("bookmark_num", "//span[contains(@class, 'bookmark')]/text()")
+        item_loader.add_xpath("comment_num", "//span[@class='btn-bluet-bigger href-style hide-on-480']/text()")
+        item_loader.add_xpath("info", "//p[@class='entry-meta-hide-on-mobile']/a/text()")
+        item_loader.add_xpath("entry", "//div[(@class='entry')]")
 
-        # 对选择器进行extract()得到相应的列表
-        title = title_selector.extract_first('')
-        titlecss = title_css.extract_first('')    # 防止异常
-        create_time = createtime_selector.extract()[0].strip().replace('·', '').strip()
-        info = info_selector.extract()
-        comment_num = comment_selector.extract()[0]
-        vote_num = vote_selector.extract_first('')
-        bookmark_num = bookmark_selector.extract_first('')
-        entry = entry_selector.extract()[0]
+        # 通过add_value为item填充具体值
+        item_loader.add_value("url", response.url)
+        item_loader.add_value("url_object_id", get_md5(response.url))
+        item_loader.add_value("front_image_url", [front_image_url])
 
-        re_for_comment_num = re.match(r".*(\d+).*", comment_num)
-        re_for_bookmark_num = re.match(r".*(\d+).*", bookmark_num)
-
-        if re_for_comment_num:
-            comment_num = int(re_for_comment_num.group(1))
-        else:
-            comment_num = 0
-
-        if re_for_bookmark_num:
-            bookmark_num = int(re_for_bookmark_num.group(1))
-        else:
-            bookmark_num = 0
-
-        info = [element for element in info if not element.strip().endswith('评论')]
-        str_info = ",".join(info)
-
-        # title = scrapy.Field()
-        # create_date = scrapy.Field()
-        # url = scrapy.Field()
-        # url_object_id = scrapy.Field()
-        # front_image_url = scrapy.Field()
-        # front_image_path = scrapy.Field()
-        # vote_num = scrapy.Field()
-        # bookmark_num = scrapy.Field()
-        # comment_num = scrapy.Field()
-        # info = scrapy.Field()
-        # entry = scrapy.Field()
-
-        article_item["title"] = title
-
-        try:
-            create_time = datetime.datetime.strptime(create_time, "%Y/%m/%d").date()
-        except Exception as e:
-            create_time = datetime.datetime.now().date()
-
-        article_item["create_date"] = create_time
-        article_item["url"] = response.url
-        article_item["url_object_id"] = get_md5(response.url)
-        article_item["front_image_url"] = [front_image_url]
-        # article_item[front_image_path] =
-        article_item["vote_num"] = vote_num
-        article_item["bookmark_num"] = bookmark_num
-        article_item["comment_num"] = comment_num
-        article_item["info"] = info
-        article_item["entry"] = entry
+        article_item = item_loader.load_item()
 
         # print(r'标题: %s' % title)
         # print(r'创建时间: %s' % create_time)
